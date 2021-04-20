@@ -20,9 +20,16 @@ h1 {
     box-shadow: 0 0 30px rgb(206, 206, 206);
     transition: border 0.2s;
 }
+.board-quarter {
+    display: inline-block;
+    width: 270px;
+    height: 270px;
+
+    outline: 1px solid red;
+}
 .board-row {
     display: block;
-    width: 540px;
+    width: 270px;
     height: 90px;
 }
 .board-square {

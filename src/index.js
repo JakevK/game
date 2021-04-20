@@ -8,12 +8,26 @@ class Board extends React.Component {
     super(props);
     this.state = {
       squares: [
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
+        [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
+        [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
+        [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
+        [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
       ],
       turn: 0,
       winner: 0,
@@ -28,7 +42,10 @@ class Board extends React.Component {
         ? 0
         : checkRow(row.slice(1));
 
-    const squares = this.state.squares;
+    const squares = [
+      ...this.state.squares[0].map((x, i) => [...x, ...this.state.squares[1][i]]),
+      ...this.state.squares[2].map((x, i) => [...x, ...this.state.squares[3][i]]),
+    ];
 
     const checks = [
       ...squares,
@@ -51,10 +68,10 @@ class Board extends React.Component {
     return 0;
   }
 
-  handleClickSquare(i, j) {
-    if (!this.state.squares[i][j] && !this.state.winner) {
+  handleClickSquare(k, i, j) {
+    if (!this.state.squares[k][i][j] && !this.state.winner) {
       let squaresTemp = this.state.squares;
-      squaresTemp[i][j] = this.state.turn + 1;
+      squaresTemp[k][i][j] = this.state.turn + 1;
 
       const newTurn = 1 - this.state.turn;
       const winner = this.checkForWin();
@@ -70,24 +87,31 @@ class Board extends React.Component {
   }
 
   render() {
-    const board = this.state.squares.map((row, i) => {
-      const squares = row.map((square, j) => {
-        const squareColor = ["#efefef", "blue", "red"][square];
-        const squareStyle = {
-          backgroundColor: squareColor,
-        };
+    const board = this.state.squares.map((quarter, k) => {
+      const rows = quarter.map((row, i) => {
+        const squares = row.map((square, j) => {
+          const squareColor = ["#efefef", "blue", "red"][square];
+          const squareStyle = {
+            backgroundColor: squareColor,
+          };
+          return (
+            <button
+              style={squareStyle}
+              className="board-square"
+              key={j}
+              onClick={() => this.handleClickSquare(k, i, j)}
+            ></button>
+          );
+        });
         return (
-          <button
-            style={squareStyle}
-            className="board-square"
-            key={j}
-            onClick={() => this.handleClickSquare(i, j)}
-          ></button>
+          <div className="board-row" key={i}>
+            {squares}
+          </div>
         );
       });
       return (
-        <div className="board-row" key={i}>
-          {squares}
+        <div className="board-quarter" key={k}>
+          {rows}
         </div>
       );
     });
