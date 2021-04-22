@@ -1,4 +1,3 @@
-import { getByPlaceholderText } from "@testing-library/dom";
 import React from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
@@ -7,6 +6,7 @@ class Board extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      rotations: [0, 0, 0, 0],
       squares: [
         [
           [0, 0, 0],
@@ -29,12 +29,10 @@ class Board extends React.Component {
           [0, 0, 0],
         ],
       ],
-      turn: 0,
-      winner: 0,
     };
   }
 
-  checkForWin() {
+  checkForWin(boardToCheck) {
     const checkRow = (row) =>
       new Set(row.slice(0, 5)).size === 1
         ? row[0]
@@ -43,8 +41,8 @@ class Board extends React.Component {
         : checkRow(row.slice(1));
 
     const squares = [
-      ...this.state.squares[0].map((x, i) => [...x, ...this.state.squares[1][i]]),
-      ...this.state.squares[2].map((x, i) => [...x, ...this.state.squares[3][i]]),
+      ...boardToCheck[0].map((x, i) => [...x, ...boardToCheck[1][i]]),
+      ...boardToCheck[2].map((x, i) => [...x, ...boardToCheck[3][i]]),
     ];
 
     const checks = [
@@ -69,21 +67,67 @@ class Board extends React.Component {
   }
 
   handleClickSquare(k, i, j) {
-    if (!this.state.squares[k][i][j] && !this.state.winner) {
+    if (
+      !this.state.squares[k][i][j] &&
+      !this.props.winner &&
+      !this.props.stage
+    ) {
       let squaresTemp = this.state.squares;
-      squaresTemp[k][i][j] = this.state.turn + 1;
-
-      const newTurn = 1 - this.state.turn;
-      const winner = this.checkForWin();
+      squaresTemp[k][i][j] = this.props.turn + 1;
 
       this.setState({
         squares: squaresTemp,
-        turn: newTurn,
-        winner: winner,
       });
 
-      this.props.handleTurnChange(newTurn, winner);
+      this.props.handleStageChange();
     }
+  }
+
+  rotateQuarter(quarter, direction) {
+    let newRotations = [...this.state.rotations];
+    newRotations[quarter] += direction ? 1 : -1;
+    /*
+    let newQuarter = [...this.state.squares[quarter]];
+    if (direction) {
+      newQuarter = [...Array(3).keys()].map((n) =>
+        newQuarter.map((row) => row[n]).reverse()
+      );
+    } else {
+      newQuarter = 
+    }
+*/
+
+    const rotateMatrix = (matrix, rotation) => {
+      console.log(rotation);
+      if (rotation === 1) {
+        return [...Array(3).keys()].map((n) =>
+          matrix.map((row) => row[n]).reverse()
+        );
+      }
+      if (rotation === 2) {
+        return matrix.map((x) => [...x].reverse()).reverse();
+      }
+      if (rotation === 3) {
+        return [...Array(3).keys()]
+          .reverse()
+          .map((n) => matrix.map((row) => row[n]));
+      }
+      return matrix;
+    };
+    const rotatedBoard = [...this.state.squares].map((x, i) =>
+      rotateMatrix(x, ((newRotations[i] % 4) + 4) % 4)
+    );
+    console.log(rotatedBoard);
+
+    const newTurn = 1 - this.props.turn;
+    const winner = this.checkForWin(rotatedBoard);
+
+    this.setState({
+      rotations: newRotations,
+    });
+
+    this.props.handleTurnChange(newTurn, winner);
+    this.props.handleStageChange();
   }
 
   render() {
@@ -109,22 +153,56 @@ class Board extends React.Component {
           </div>
         );
       });
+      const quarterStyle = {
+        transform: `rotate(${this.state.rotations[k] * 90}deg)`,
+      };
       return (
-        <div className="board-quarter" key={k}>
+        <div className="board-quarter" key={k} style={quarterStyle}>
           {rows}
         </div>
       );
     });
     const boardStyle = {
-      border: `3px solid ${
+      border:
+        "none" /*`3px solid ${
         ["blue", "red"][
-          this.state.winner ? this.state.winner - 1 : this.state.turn
+          this.props.winner ? this.props.winner - 1 : this.props.turn
         ]
-      }`,
+      }`,*/,
     };
     return (
-      <div className="board" style={boardStyle}>
-        {board}
+      <div>
+        {this.props.stage ? (
+          <div className="controls">
+            <div className="rotate-top-left">
+              <button onClick={() => this.rotateQuarter(0, 0)}>{"<-"}</button>
+              <button onClick={() => this.rotateQuarter(0, 1)}>{"->"}</button>
+            </div>
+            <div className="rotate-top-right">
+              <button onClick={() => this.rotateQuarter(1, 0)}>{"<-"}</button>
+              <button onClick={() => this.rotateQuarter(1, 1)}>{"->"}</button>
+            </div>
+          </div>
+        ) : (
+          <div className="controls"></div>
+        )}
+        <div className="board" style={boardStyle}>
+          {board}
+        </div>
+        {this.props.stage ? (
+          <div className="controls">
+            <div className="rotate-bottom-left">
+              <button onClick={() => this.rotateQuarter(2, 1)}>{"<-"}</button>
+              <button onClick={() => this.rotateQuarter(2, 0)}>{"->"}</button>
+            </div>
+            <div className="rotate-bottom-right">
+              <button onClick={() => this.rotateQuarter(3, 1)}>{"<-"}</button>
+              <button onClick={() => this.rotateQuarter(3, 0)}>{"->"}</button>
+            </div>
+          </div>
+        ) : (
+          <div className="controls"></div>
+        )}
       </div>
     );
   }
@@ -136,10 +214,8 @@ class Game extends React.Component {
     this.state = {
       turn: 0,
       winner: 0,
+      stage: 0,
     };
-  }
-  handleTurnChange(turn, winner) {
-    this.setState({ turn: turn, winner: winner });
   }
   render() {
     const turnColor = ["blue", "red"][this.state.turn];
@@ -161,13 +237,27 @@ class Game extends React.Component {
         <span style={turnColorStyle}>{turnColor}</span> player's turn
       </div>
     );
+    const instructions = this.state.winner ? (
+      <div className="instruction"></div>
+    ) : (
+      <div className="instructions">
+        {["place a piece", "rotate a quarter"][this.state.stage]}
+      </div>
+    );
     return (
       <div className="container">
         {turnIndicator}
+        {instructions}
         <Board
           handleTurnChange={(turn, winner) =>
-            this.handleTurnChange(turn, winner)
+            this.setState({ turn: turn, winner: winner })
           }
+          handleStageChange={() =>
+            this.setState({ stage: 1 - this.state.stage })
+          }
+          turn={this.state.turn}
+          winner={this.state.winner}
+          stage={this.state.stage}
         />
       </div>
     );
