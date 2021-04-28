@@ -1,269 +1,94 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 import "./index.css";
 
-class Board extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      rotations: [0, 0, 0, 0],
-      squares: [
-        [
-          [0, 0, 0],
-          [0, 0, 0],
-          [0, 0, 0],
-        ],
-        [
-          [0, 0, 0],
-          [0, 0, 0],
-          [0, 0, 0],
-        ],
-        [
-          [0, 0, 0],
-          [0, 0, 0],
-          [0, 0, 0],
-        ],
-        [
-          [0, 0, 0],
-          [0, 0, 0],
-          [0, 0, 0],
-        ],
-      ],
-    };
-  }
+import Game from "./game";
 
-  checkForWin(boardToCheck) {
-    const checkRow = (row) =>
-      new Set(row.slice(0, 5)).size === 1
-        ? row[0]
-        : row.length <= 5
-        ? 0
-        : checkRow(row.slice(1));
+import io from "socket.io-client";
 
-    const squares = [
-      ...boardToCheck[0].map((x, i) => [...x, ...boardToCheck[1][i]]),
-      ...boardToCheck[2].map((x, i) => [...x, ...boardToCheck[3][i]]),
-    ];
+let endpoint = "http://localhost:5000";
+let socket = io.connect(endpoint);
 
-    const checks = [
-      ...squares,
-      ...[...Array(6).keys()].map((n) => squares.map((row) => row[n])),
-      ...[squares, squares.slice(1), squares.map((x) => x.slice(1))].map((x) =>
-        x.map((row, i) => row[i])
-      ),
-      ...[
-        squares,
-        squares.slice(1),
-        squares.map((x) => x.slice(0, 5)),
-      ].map((x) => x.map((row, i) => row[row.length - 1 - i])),
-    ];
+const Chatroom = (props) => {
+  const [messages, setMessages] = useState(["welcome"]);
+  const [message, setMessage] = useState("");
 
-    for (let i = 0; i < checks.length; i++) {
-      let winner = checkRow(checks[i]);
-      if (winner) return winner;
-    }
+  useEffect(() => {
+    getMessages();
+  }, [messages.length]);
 
-    return 0;
-  }
-
-  handleClickSquare(k, i, j) {
-    if (
-      !this.state.squares[k][i][j] &&
-      !this.props.winner &&
-      !this.props.stage
-    ) {
-      let squaresTemp = this.state.squares;
-      squaresTemp[k][i][j] = this.props.turn + 1;
-
-      this.setState({
-        squares: squaresTemp,
-      });
-
-      this.props.handleStageChange();
-    }
-  }
-
-  rotateQuarter(quarter, direction) {
-    let newRotations = [...this.state.rotations];
-    newRotations[quarter] += direction ? 1 : -1;
-    /*
-    let newQuarter = [...this.state.squares[quarter]];
-    if (direction) {
-      newQuarter = [...Array(3).keys()].map((n) =>
-        newQuarter.map((row) => row[n]).reverse()
-      );
-    } else {
-      newQuarter = 
-    }
-*/
-
-    const rotateMatrix = (matrix, rotation) => {
-      console.log(rotation);
-      if (rotation === 1) {
-        return [...Array(3).keys()].map((n) =>
-          matrix.map((row) => row[n]).reverse()
-        );
-      }
-      if (rotation === 2) {
-        return matrix.map((x) => [...x].reverse()).reverse();
-      }
-      if (rotation === 3) {
-        return [...Array(3).keys()]
-          .reverse()
-          .map((n) => matrix.map((row) => row[n]));
-      }
-      return matrix;
-    };
-    const rotatedBoard = [...this.state.squares].map((x, i) =>
-      rotateMatrix(x, ((newRotations[i] % 4) + 4) % 4)
-    );
-    console.log(rotatedBoard);
-
-    const newTurn = 1 - this.props.turn;
-    const winner = this.checkForWin(rotatedBoard);
-
-    this.setState({
-      rotations: newRotations,
+  const getMessages = () => {
+    socket.on("message", (msg) => {
+      setMessages([...messages, msg]);
     });
+  };
 
-    this.props.handleTurnChange(newTurn, winner);
-    this.props.handleStageChange();
-  }
+  const sendMessage = (message) => {
+    socket.emit("message", { room: props.room, message: message });
+  };
 
-  render() {
-    const board = this.state.squares.map((quarter, k) => {
-      const rows = quarter.map((row, i) => {
-        const squares = row.map((square, j) => {
-          const squareColor = ["#efefef", "blue", "red"][square];
-          const squareStyle = {
-            backgroundColor: squareColor,
-          };
-          return (
-            <button
-              style={squareStyle}
-              className="board-square"
-              key={j}
-              onClick={() => this.handleClickSquare(k, i, j)}
-            ></button>
-          );
-        });
-        return (
-          <div className="board-row" key={i}>
-            {squares}
+  const onChange = (e) => {
+    setMessage(e.target.value);
+  };
+
+  const onClick = () => {
+    if (message !== "") {
+      sendMessage(message);
+      setMessage("");
+    }
+  };
+
+  return (
+    <div>
+      {messages.length > 0 &&
+        messages.map((msg) => (
+          <div>
+            <p>{msg}</p>
           </div>
-        );
-      });
-      const quarterStyle = {
-        transform: `rotate(${this.state.rotations[k] * 90}deg)`,
-      };
-      return (
-        <div className="board-quarter" key={k} style={quarterStyle}>
-          {rows}
-        </div>
-      );
-    });
-    const boardStyle = {
-      border:
-        "none" /*`3px solid ${
-        ["blue", "red"][
-          this.props.winner ? this.props.winner - 1 : this.props.turn
-        ]
-      }`,*/,
-    };
+        ))}
+      <input value={message} name="message" onChange={(e) => onChange(e)} />
+      <button onClick={onClick}>send</button>
+    </div>
+  );
+};
+
+const App = () => {
+  const [room, setRoom] = useState("");
+  const [code, setCode] = useState("");
+
+  const joinRoom = (newRoom) => {
+    socket.emit("join", { room: newRoom });
+    setRoom(newRoom);
+  };
+  const leaveRoom = () => {
+    socket.emit("leave", { room: room });
+    setRoom("");
+  };
+
+  const onCodeChange = (e) => {
+    setCode(e.target.value);
+  };
+  const onCodeSubmit = () => {
+    if (code.length === 6) {
+      joinRoom(code);
+    }
+  };
+
+  if (room) {
     return (
       <div>
-        {this.props.stage ? (
-          <div className="controls">
-            <div className="rotate-top-left">
-              <button onClick={() => this.rotateQuarter(0, 0)}>{"<-"}</button>
-              <button onClick={() => this.rotateQuarter(0, 1)}>{"->"}</button>
-            </div>
-            <div className="rotate-top-right">
-              <button onClick={() => this.rotateQuarter(1, 0)}>{"<-"}</button>
-              <button onClick={() => this.rotateQuarter(1, 1)}>{"->"}</button>
-            </div>
-          </div>
-        ) : (
-          <div className="controls"></div>
-        )}
-        <div className="board" style={boardStyle}>
-          {board}
-        </div>
-        {this.props.stage ? (
-          <div className="controls">
-            <div className="rotate-bottom-left">
-              <button onClick={() => this.rotateQuarter(2, 1)}>{"<-"}</button>
-              <button onClick={() => this.rotateQuarter(2, 0)}>{"->"}</button>
-            </div>
-            <div className="rotate-bottom-right">
-              <button onClick={() => this.rotateQuarter(3, 1)}>{"<-"}</button>
-              <button onClick={() => this.rotateQuarter(3, 0)}>{"->"}</button>
-            </div>
-          </div>
-        ) : (
-          <div className="controls"></div>
-        )}
+        <button onClick={leaveRoom}>leave</button>
+        <Chatroom room={room} />
       </div>
     );
   }
-}
+  return (
+    <div>
+      <h3>enter a code to join a room</h3>
+      <input value={code} name="code" onChange={(e) => onCodeChange(e)} />
+      <button onClick={onCodeSubmit}>go</button>
+    </div>
+  );
+};
 
-class Game extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      turn: 0,
-      winner: 0,
-      stage: 0,
-    };
-  }
-  render() {
-    const turnColor = ["blue", "red"][this.state.turn];
-    const winnerColor = ["blue", "red"][this.state.winner - 1];
-    const turnColorStyle = {
-      color: turnColor,
-      fontWeight: "bold",
-    };
-    const winnerColorStyle = {
-      color: winnerColor,
-      fontWeight: "bold",
-    };
-    const turnIndicator = this.state.winner ? (
-      <div className="turnIndicator">
-        <span style={winnerColorStyle}>{winnerColor}</span> won!
-      </div>
-    ) : (
-      <div className="turnIndicator">
-        <span style={turnColorStyle}>{turnColor}</span> player's turn
-      </div>
-    );
-    const instructions = this.state.winner ? (
-      <div className="instruction"></div>
-    ) : (
-      <div className="instructions">
-        {["place a piece", "rotate a quarter"][this.state.stage]}
-      </div>
-    );
-    return (
-      <div className="container">
-        {turnIndicator}
-        {instructions}
-        <Board
-          handleTurnChange={(turn, winner) =>
-            this.setState({ turn: turn, winner: winner })
-          }
-          handleStageChange={() =>
-            this.setState({ stage: 1 - this.state.stage })
-          }
-          turn={this.state.turn}
-          winner={this.state.winner}
-          stage={this.state.stage}
-        />
-      </div>
-    );
-  }
-}
-
-//============================================================
-
-ReactDOM.render(<Game />, document.getElementById("root"));
+ReactDOM.render(<App />, document.getElementById("root"));
