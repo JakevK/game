@@ -65,10 +65,19 @@ const StringInput = (props) => {
   const onChange = (e) => {
     setInput(e.target.value);
   };
+  const onKeyUp = (e) => {
+    if (e.keyCode === 13) {
+      props.onSubmit(input);
+    }
+  };
 
   return (
     <div>
-      <input value={input} onChange={(e) => onChange(e)} />
+      <input
+        value={input}
+        onKeyUp={(e) => onKeyUp(e)}
+        onChange={(e) => onChange(e)}
+      />
       <button onClick={() => props.onSubmit(input)}>submit</button>
     </div>
   );
@@ -76,40 +85,46 @@ const StringInput = (props) => {
 
 const App = () => {
   const [name, setName] = useState("");
-  const [room, setRoom] = useState("");
-  const [code, setCode] = useState("");
+  const [game, setGame] = useState();
 
-  const joinRoom = (newRoom) => {
-    socket.emit("join", { room: newRoom, name: name });
-    setRoom(newRoom);
-  };
-  const leaveRoom = () => {
-    socket.emit("leave", { room: room, name: name });
-    setRoom("");
-  };
+  useEffect(() => {
+    getGame();
+  }, [game]);
 
-  const onCodeChange = (e) => {
-    setCode(e.target.value);
-  };
-  const onCodeSubmit = () => {
-    if (code.length === 6) {
-      joinRoom(code);
-    }
+  const getGame = () => {
+    socket.on("game", (data) => {
+      setGame(data);
+    });
   };
 
-  if (room) {
+  const joinGame = (gameCode) => {
+    socket.emit("join", { game_code: gameCode, name: name });
+  };
+  const leaveGame = () => {
+    socket.emit("leave", { game_code: game.game_code, name: name });
+    setGame();
+  };
+
+  const createGame = () => {
+    socket.emit("create", { name: name });
+  };
+
+  if (game) {
+    return <div>{JSON.stringify(game)}</div>;
+  }
+  if (name) {
     return (
       <div>
-        <button onClick={leaveRoom}>leave</button>
-        <Chatroom name={name} room={room} />
-      </div>
-    );
-  } else if (name) {
-    return (
-      <div>
-        <h3>Hello {name}, please enter a code to join a room</h3>
-        <input value={code} name="code" onChange={(e) => onCodeChange(e)} />
-        <button onClick={onCodeSubmit}>go</button>
+        <h3>hello {name}!</h3>
+        <p>what would you like to do today?</p>
+        <button onClick={createGame}>
+          <div>create</div>
+          <p>create a new game for your friend to join</p>
+        </button>
+        <button>
+          <div>join</div>
+          <p>join an existing game with a game code</p>
+        </button>
       </div>
     );
   } else {

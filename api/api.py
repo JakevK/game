@@ -1,4 +1,5 @@
 import time
+import random
 from flask import Flask
 from flask_socketio import SocketIO, send, emit, join_room, leave_room
 
@@ -38,6 +39,42 @@ def join(data):
 def leave(data):
     leave_room(data["room"])
     send({'message': data["name"] + ' left the room'}, room=data["room"])
+
+
+def generate_game_code(active):
+    code = ''.join(str(random.randint(0, 9)) for i in range(6))
+    if code in active:
+        return generate_game_code(active)
+    return code
+
+@socketio.on('create')
+def create(data):
+    active_game_codes = [active_game.game_code for active_game in Game.query.all()]
+    game_code = generate_game_code(active_game_codes)
+
+    game = Game(
+        game_code=game_code,
+        player0=data["name"],
+        player1=None,
+        board="0"*36,
+        turn=random.choice([0, 1]),
+        stage=0,
+        winner=None
+    )
+    db.session.add(game)
+    db.session.commit()
+    game_data = {
+        "game_code": game.game_code,
+        "player0": game.player0,
+        "player1": game.player1,
+        "board": game.board,
+        "turn": game.turn,
+        "stage": game.stage,
+        "winner": game.winner
+    }
+
+    join_room(game_code)
+    emit("game", game_data)
 
 
 if __name__ == "__main__":
