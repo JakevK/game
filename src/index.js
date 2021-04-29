@@ -10,7 +10,7 @@ let endpoint = "http://localhost:5000";
 let socket = io.connect(endpoint);
 
 const Chatroom = (props) => {
-  const [messages, setMessages] = useState(["welcome"]);
+  const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -19,12 +19,19 @@ const Chatroom = (props) => {
 
   const getMessages = () => {
     socket.on("message", (msg) => {
-      setMessages([...messages, msg]);
+      setMessages([
+        ...messages,
+        (msg.name ? msg.name + ": " : "") + msg.message,
+      ]);
     });
   };
 
   const sendMessage = (message) => {
-    socket.emit("message", { room: props.room, message: message });
+    socket.emit("message", {
+      room: props.room,
+      name: props.name,
+      message: message,
+    });
   };
 
   const onChange = (e) => {
@@ -40,6 +47,7 @@ const Chatroom = (props) => {
 
   return (
     <div>
+      <h3>room {props.room}</h3>
       {messages.length > 0 &&
         messages.map((msg) => (
           <div>
@@ -52,16 +60,31 @@ const Chatroom = (props) => {
   );
 };
 
+const StringInput = (props) => {
+  const [input, setInput] = useState("");
+  const onChange = (e) => {
+    setInput(e.target.value);
+  };
+
+  return (
+    <div>
+      <input value={input} onChange={(e) => onChange(e)} />
+      <button onClick={() => props.onSubmit(input)}>submit</button>
+    </div>
+  );
+};
+
 const App = () => {
+  const [name, setName] = useState("");
   const [room, setRoom] = useState("");
   const [code, setCode] = useState("");
 
   const joinRoom = (newRoom) => {
-    socket.emit("join", { room: newRoom });
+    socket.emit("join", { room: newRoom, name: name });
     setRoom(newRoom);
   };
   const leaveRoom = () => {
-    socket.emit("leave", { room: room });
+    socket.emit("leave", { room: room, name: name });
     setRoom("");
   };
 
@@ -78,17 +101,25 @@ const App = () => {
     return (
       <div>
         <button onClick={leaveRoom}>leave</button>
-        <Chatroom room={room} />
+        <Chatroom name={name} room={room} />
+      </div>
+    );
+  } else if (name) {
+    return (
+      <div>
+        <h3>Hello {name}, please enter a code to join a room</h3>
+        <input value={code} name="code" onChange={(e) => onCodeChange(e)} />
+        <button onClick={onCodeSubmit}>go</button>
+      </div>
+    );
+  } else {
+    return (
+      <div>
+        <h3>what's your name?</h3>
+        <StringInput onSubmit={(output) => setName(output)} />
       </div>
     );
   }
-  return (
-    <div>
-      <h3>enter a code to join a room</h3>
-      <input value={code} name="code" onChange={(e) => onCodeChange(e)} />
-      <button onClick={onCodeSubmit}>go</button>
-    </div>
-  );
 };
 
 ReactDOM.render(<App />, document.getElementById("root"));
