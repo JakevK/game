@@ -1,6 +1,11 @@
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
-db = SQLAlchemy()
+
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = #########
+db = SQLAlchemy(app)
 
 class Game(db.Model):
     """ game model """
@@ -16,3 +21,4 @@ class Game(db.Model):
     turn = db.Column(db.Integer, nullable=False) # 0 or 1 for player 0 or 1
     stage = db.Column(db.Integer, nullable=False) # 0 or 1 for placing or spinning
     winner = db.Column(db.Integer) # 0 or 1, null if no winner
+
