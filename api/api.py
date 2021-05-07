@@ -13,7 +13,7 @@ app.secret_key = 'dont forget this you idiot'
 
 # configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-    'SQLALCHEMY_DATABASE_URI')
+    'DATABASE_URL')
 db = SQLAlchemy(app)
 
 # initialize flask-socketio
