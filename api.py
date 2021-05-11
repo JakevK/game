@@ -74,6 +74,8 @@ def generate_game_code(active):
 
 @socketio.on('create')
 def create(data):
+    print('\n'*10)
+    print('---------------surely---------------')
     active_game_codes = [
         active_game.game_code for active_game in GameTable.query.all()]
     game_code = generate_game_code(active_game_codes)
