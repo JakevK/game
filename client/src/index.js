@@ -4,7 +4,12 @@ import "./index.css";
 
 import io from "socket.io-client";
 
-let endpoint = "http://localhost:5000";
+let endpoint =
+  window.location.hostname +
+  ":" +
+  (window.location.port === "5000" ? window.location.port : "");
+console.log("bruh");
+console.log(endpoint);
 let socket = io.connect(endpoint);
 
 const StringInput = (props) => {
@@ -38,11 +43,18 @@ const App = () => {
 
   useEffect(() => {
     getGame();
-  }, [game]);
+    getGameEnd();
+  }, []);
 
   const getGame = () => {
     socket.on("game", (data) => {
       setGame(data);
+      setJoining(0);
+    });
+  };
+  const getGameEnd = () => {
+    socket.on("game_over", (data) => {
+      setGame();
     });
   };
 
@@ -64,7 +76,14 @@ const App = () => {
 
   if (game) {
     if (game.player1) {
-      return <Game data={game} playerNum={playerNum} name={name} />;
+      return (
+        <Game
+          data={game}
+          playerNum={playerNum}
+          name={name}
+          leaveGame={leaveGame}
+        />
+      );
     }
     return (
       <div>
@@ -140,7 +159,11 @@ const Game = (props) => {
     str.match(new RegExp(".{1," + len + "}", "g"));
 
   const placePiece = (i, j, k) => {
-    if (props.data.turn === props.playerNum && props.data.stage === 0) {
+    if (
+      props.data.turn === props.playerNum &&
+      props.data.stage === 0 &&
+      props.data.winner === null
+    ) {
       let index = i * 9 + j * 3 + k;
       if (props.data.board[index] === "0") {
         socket.emit("place", {
@@ -162,6 +185,7 @@ const Game = (props) => {
 
   return (
     <div>
+      <button onClick={() => props.leaveGame()}>leave game</button>
       <h3>
         playing as{" "}
         <span style={{ color: ["blue", "red"][props.playerNum] }}>
@@ -169,11 +193,15 @@ const Game = (props) => {
         </span>
       </h3>
       <div>
-        {props.data.winner === null ? (props.data.turn === props.playerNum
-          ? props.data.stage
-            ? "turn a quarter"
-            : "place a piece"
-          : "opponent's turn") : props.data.winner === props.playerNum ? "you won!" : "you lost :("}
+        {props.data.winner === null
+          ? props.data.turn === props.playerNum
+            ? props.data.stage
+              ? "turn a quarter"
+              : "place a piece"
+            : "opponent's turn"
+          : props.data.winner === props.playerNum
+          ? "you won!"
+          : "you lost :("}
       </div>
       {props.data.stage && props.data.turn === props.playerNum ? (
         <div className="controls">

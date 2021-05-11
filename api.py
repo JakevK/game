@@ -1,29 +1,42 @@
 import random
 import os
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_socketio import SocketIO, send, emit, join_room, leave_room
 
 from models import *
 
 
 # configure app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='client/build')
 app.secret_key = 'dont forget this you idiot'
-
 
 # configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL')
+
+print('\n\n\n\n\n\n')
+print(os.environ.get('DATABASE_URL'))
 db = SQLAlchemy(app)
 
 # initialize flask-socketio
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 
+# Serve React App
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve(path):
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
+
 @socketio.on('join')
 def join(data):
-    game = db.session.query(Game).filter_by(game_code=data["game_code"]).first()
-    if game:
+    game = db.session.query(GameTable).filter_by(
+        game_code=data["game_code"]).first()
+    if game and not game.player1:
         join_room(data["game_code"])
         game.player1 = data["name"]
         db.session.commit()
@@ -42,8 +55,18 @@ def join(data):
 
 @socketio.on('leave')
 def leave(data):
-    leave_room(data["room"])
-    send({'message': data["name"] + ' left the room'}, room=data["room"])
+    game = db.session.query(GameTable).filter_by(
+        game_code=data["game_code"]).first()
+    if game:
+        db.session.delete(game)
+        db.session.commit()
+        emit("game_over", room=data["game_code"])
+        leave_room(data["game_code"])
+
+
+@socketio.on('disconnect')
+def disconnect():
+    print('\n\n\n\nDISCONNECTED')
 
 
 def generate_game_code(active):
@@ -56,10 +79,10 @@ def generate_game_code(active):
 @socketio.on('create')
 def create(data):
     active_game_codes = [
-        active_game.game_code for active_game in Game.query.all()]
+        active_game.game_code for active_game in GameTable.query.all()]
     game_code = generate_game_code(active_game_codes)
 
-    game = Game(
+    game = GameTable(
         game_code=game_code,
         player0=data["name"],
         player1=None,
@@ -88,7 +111,7 @@ def create(data):
 
 @socketio.on('place')
 def place(data):
-    game = db.session.query(Game).filter_by(game_code=data["game_code"])
+    game = db.session.query(GameTable).filter_by(game_code=data["game_code"])
     game = game.first()
 
     if game.stage == 0 and data["player_num"] == game.turn and game.board[data["index"]] == "0" and game.winner == None:
@@ -116,6 +139,7 @@ def cycle(quarter, key):
     quarter[key[-1]] = first
     return quarter
 
+
 def rotate_quarter(quarter, rotation):
     quarter = list(quarter)
     cycles = [
@@ -129,17 +153,20 @@ def rotate_quarter(quarter, rotation):
 
     return ''.join(quarter)
 
+
 def rotate_board(board, rotations):
     result = ""
     for i, rotation in enumerate(rotations):
-        result += rotate_quarter(board[i*9:(i+1)*9], rotation%4)
+        result += rotate_quarter(board[i*9:(i+1)*9], rotation % 4)
     return result
 
+
 def check_for_win(board, rotations):
-    board = rotate_board(board, [int(rotation) for rotation in rotations.split(',')])
+    board = rotate_board(board, [int(rotation)
+                         for rotation in rotations.split(',')])
     board = [int(val) for val in list(board)]
     board = [[[*half[i:i+3], *half[i+9:i+12]]
-            for i in range(0, 9, 3)] for half in [board[0:18], board[18:36]]]
+              for i in range(0, 9, 3)] for half in [board[0:18], board[18:36]]]
     board = [*board[0], *board[1]]
 
     def check_row(row):
@@ -165,18 +192,20 @@ def check_for_win(board, rotations):
     ]
     for check in checks:
         winner = check_row(check)
-        if winner: return winner-1
+        if winner:
+            return winner-1
 
     return None
 
 
 @socketio.on('rotate')
 def rotate(data):
-    game = db.session.query(Game).filter_by(game_code=data["game_code"])
+    game = db.session.query(GameTable).filter_by(game_code=data["game_code"])
     game = game.first()
 
     if game.stage == 1 and data["player_num"] == game.turn and game.winner == None:
-        game.rotations = ','.join(quarter if i != data["quarter"] else str(int(quarter) + data["rotation"]) for i, quarter in enumerate(game.rotations.split(',')))
+        game.rotations = ','.join(quarter if i != data["quarter"] else str(int(
+            quarter) + data["rotation"]) for i, quarter in enumerate(game.rotations.split(',')))
         game.winner = check_for_win(game.board, game.rotations)
 
         if game.winner == None:
