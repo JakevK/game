@@ -11,6 +11,7 @@ flask-sqlalchemy = "*"
 psycopg2 = "*"
 gunicorn = "*"
 python-decouple = "*"
+eventlet = "==0.30.2"
 
 [dev-packages]
 

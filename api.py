@@ -12,13 +12,12 @@ app.secret_key = 'dont forget this you idiot'
 
 # configure database
 db_uri = os.environ.get('DATABASE_URL')
+print('\n'*10)
+print(db_uri)
 if db_uri:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:' + ':'.join(db_uri.split(':')[1:])
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = None
-print('\n'*10)
-print('database uri set:')
-print(app.config['SQLALCHEMY_DATABASE_URI'])
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABSE_URL')
 db = SQLAlchemy(app)
 
 # initialize flask-socketio
