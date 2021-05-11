@@ -11,7 +11,7 @@ app = Flask(__name__, static_folder='client/build')
 app.secret_key = 'dont forget this you idiot'
 
 # configure database
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:' + os.environ.get('DATABASE_URL').split(':')[1]
 db = SQLAlchemy(app)
 
 # initialize flask-socketio
