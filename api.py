@@ -13,7 +13,7 @@ app.secret_key = 'dont forget this you idiot'
 # configure database
 db_uri = os.environ.get('DATABASE_URL')
 if db_uri:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:' + db_uri.split(':')[1]
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:' + ':'.join(db_uri.split(':')[1:])
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = None
 print('\n'*10)
