@@ -5,10 +5,7 @@ import "./index.css";
 import io from "socket.io-client";
 
 const ws_scheme = window.location.protocol === "https:" ? "wss://" : "ws://";
-let endpoint =
-  ws_scheme +
-  window.location.host +
-  (window.location.port === "5000" ? window.location.port : "");
+let endpoint = window.location.host;
 console.log("bruh");
 console.log(endpoint);
 let socket = io.connect(endpoint);
