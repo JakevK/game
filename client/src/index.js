@@ -5,7 +5,10 @@ import "./index.css";
 import io from "socket.io-client";
 
 const ws_scheme = window.location.protocol === "https:" ? "wss://" : "ws://";
-let endpoint = window.location.host;
+let endpoint =
+  window.location.host === "localhost:5000"
+    ? window.location.host
+    : "https://spinspot.herokuapp.com/";
 console.log("bruh");
 console.log(endpoint);
 let socket = io.connect(endpoint);
