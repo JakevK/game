@@ -1,6 +1,6 @@
 import random
 import os
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO, send, emit, join_room, leave_room
 
 from models import *
@@ -62,6 +62,7 @@ def leave(data):
 
 @socketio.on('disconnect')
 def disconnect():
+    print(request.sid)
     print('\n\n\n\nDISCONNECTED')
 
 
